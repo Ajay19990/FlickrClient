@@ -8,10 +8,10 @@
 
 import UIKit
 
-class HomeVC: UICollectionViewController, UICollectionViewDelegateFlowLayout {
+class HomeVC: UICollectionViewController{
 
     let cellId = "cellId"
-    let label = UILabel()
+    let label = HelperLabel()
     var activityIndicator2 = UIActivityIndicatorView()
     var photoViewModels = [PhotoViewModel]()
     var photos = [Photo]()
@@ -22,7 +22,6 @@ class HomeVC: UICollectionViewController, UICollectionViewDelegateFlowLayout {
     
     override func loadView() {
         super.loadView()
-        //configureActivityIndicator()
         configureRefreshButton()
         setupActivityIndicator()
     }
@@ -35,39 +34,17 @@ class HomeVC: UICollectionViewController, UICollectionViewDelegateFlowLayout {
     }
     
     private func setupActivityIndicator() {
+        activityIndicatorContainer = ActivityIndicatorContainer(view: view)
         
-        activityIndicatorContainer = UIView(frame: CGRect(x: 0, y: 0, width: 80, height: 80))
-        activityIndicatorContainer.center.x = view.center.x
-        activityIndicatorContainer.center.y = view.center.y
-        activityIndicatorContainer.backgroundColor = .systemGray5
-        activityIndicatorContainer.alpha = 0.8
-        activityIndicatorContainer.layer.cornerRadius = 10
-          
-        // Configure the activity indicator
         activityIndicator = UIActivityIndicatorView()
         activityIndicator.hidesWhenStopped = true
         activityIndicator.style = UIActivityIndicatorView.Style.large
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
         activityIndicatorContainer.addSubview(activityIndicator)
         view.addSubview(activityIndicatorContainer)
-            
-        // Constraints
+        
         activityIndicator.centerXAnchor.constraint(equalTo: activityIndicatorContainer.centerXAnchor).isActive = true
         activityIndicator.centerYAnchor.constraint(equalTo: activityIndicatorContainer.centerYAnchor).isActive = true
-    }
-    
-    private func configureActivityIndicator() {
-        view.addSubview(activityIndicator)
-        
-        activityIndicator.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            activityIndicator.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            activityIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            activityIndicator.heightAnchor.constraint(equalToConstant: 90),
-            activityIndicator.widthAnchor.constraint(equalToConstant: 90)
-        ])
-        
-        activityIndicator.hidesWhenStopped = true
     }
     
     private func configureRefreshButton() {
@@ -83,6 +60,7 @@ class HomeVC: UICollectionViewController, UICollectionViewDelegateFlowLayout {
     private func handlePhotoData(photos: [Photo], error: ErrorMessage?) {
         self.photos = photos
         self.photoViewModels = self.photos.map({return PhotoViewModel(photo: $0)})
+        
         if error != nil {
             DispatchQueue.main.async {
                 self.loadingImages(false)
@@ -90,6 +68,7 @@ class HomeVC: UICollectionViewController, UICollectionViewDelegateFlowLayout {
                 self.setupLabel()
             }
         }
+        
         label.removeFromSuperview()
         
         DispatchQueue.main.async {
@@ -100,17 +79,12 @@ class HomeVC: UICollectionViewController, UICollectionViewDelegateFlowLayout {
     
     private func setupLabel() {
         view.addSubview(label)
-        label.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             label.heightAnchor.constraint(equalToConstant: 40)
         ])
         
-        label.text = "No images to display"
-        label.textColor = .label
-        label.textAlignment = .center
-        label.font = .systemFont(ofSize: 20)
     }
 
     @objc func refreshTapped() {
@@ -149,9 +123,7 @@ class HomeVC: UICollectionViewController, UICollectionViewDelegateFlowLayout {
         }
     }
     
-}
-
-extension HomeVC {
+    // Collection View Functions
     
     override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return photoViewModels.count
@@ -170,7 +142,9 @@ extension HomeVC {
         detailVC.photoViewModel = photoViewModels[indexPath.row]
         present(detailVC, animated: true)
     }
-    
+}
+
+extension HomeVC: UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
         return 1
     }
@@ -182,15 +156,5 @@ extension HomeVC {
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         let side = (view.frame.width - 2) / 3
         return CGSize(width: side, height: side)
-    }
-}
-
-struct UrlBuilder {
-    let index: Int
-    let photos: [Photo]
-    
-    init(index: Int, photos: [Photo]) {
-        self.index = index
-        self.photos = photos
     }
 }
