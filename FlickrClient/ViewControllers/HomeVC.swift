@@ -11,11 +11,15 @@ import UIKit
 class HomeVC: UICollectionViewController{
 
     let cellId = "cellId"
+    let paginationLoaderId = "paginationLoaderId"
     let label = HelperLabel()
     var activityIndicator2 = UIActivityIndicatorView()
     var photoViewModels = [PhotoViewModel]()
     var photos = [Photo]()
     var refreshButton: UIBarButtonItem!
+    
+    var page = 1
+    var continuePagination = true
     
     var activityIndicatorContainer: UIView!
     var activityIndicator: UIActivityIndicatorView!
@@ -30,7 +34,7 @@ class HomeVC: UICollectionViewController{
         super.viewDidLoad()
         configureCollectionView()
         loadingImages(true)
-        FlickrClient.getPhotoData(completion: handlePhotoData)
+        getPhotos(page: page)
     }
     
     private func setupActivityIndicator() {
@@ -47,6 +51,10 @@ class HomeVC: UICollectionViewController{
         activityIndicator.centerYAnchor.constraint(equalTo: activityIndicatorContainer.centerYAnchor).isActive = true
     }
     
+    private func getPhotos(page: Int) {
+        FlickrClient.getPhotoData(page: page, completion: handlePhotoData)
+    }
+    
     private func configureRefreshButton() {
         refreshButton = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refreshTapped))
         self.navigationItem.rightBarButtonItem = refreshButton
@@ -58,9 +66,6 @@ class HomeVC: UICollectionViewController{
     }
     
     private func handlePhotoData(photos: [Photo], error: ErrorMessage?) {
-        self.photos = photos
-        self.photoViewModels = self.photos.map({return PhotoViewModel(photo: $0)})
-        
         if error != nil {
             DispatchQueue.main.async {
                 self.loadingImages(false)
@@ -69,6 +74,9 @@ class HomeVC: UICollectionViewController{
             }
         }
         
+        if page == 3 { self.continuePagination = false }
+        self.photos.append(contentsOf: photos)
+        self.photoViewModels = self.photos.map({return PhotoViewModel(photo: $0)})
         label.removeFromSuperview()
         
         DispatchQueue.main.async {
@@ -84,15 +92,18 @@ class HomeVC: UICollectionViewController{
             label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             label.heightAnchor.constraint(equalToConstant: 40)
         ])
-        
     }
 
     @objc func refreshTapped() {
         loadingImages(true)
         photoViewModels = []
+        photos = []
         setupActivityIndicator()
         showActivityIndicator(show: true)
-        FlickrClient.getPhotoData(completion: handlePhotoData)
+        getPhotos(page: 1)
+        page = 1
+        continuePagination = true
+        collectionView.scrollToItem(at: IndexPath(row: 0, section: 0), at: .top, animated: true)
     }
     
     private func loadingImages(_ loadingImages: Bool) {
@@ -142,6 +153,21 @@ class HomeVC: UICollectionViewController{
         detailVC.photoViewModel = photoViewModels[indexPath.row]
         present(detailVC, animated: true)
     }
+    
+    // Pagination
+    
+    override func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        let offsetY = scrollView.contentOffset.y
+        let contentHeight = scrollView.contentSize.height
+        let height = scrollView.frame.size.height
+
+        if offsetY > contentHeight - height {
+            guard continuePagination else { return }
+            page += 1
+            getPhotos(page: page)
+        }
+    }
+    
 }
 
 extension HomeVC: UICollectionViewDelegateFlowLayout {
