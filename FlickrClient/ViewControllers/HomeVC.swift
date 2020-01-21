@@ -20,6 +20,7 @@ class HomeVC: UICollectionViewController{
     
     var page = 1
     var continuePagination = true
+    var weHitBottom = false
     
     var activityIndicatorContainer: UIView!
     var activityIndicator: UIActivityIndicatorView!
@@ -63,6 +64,8 @@ class HomeVC: UICollectionViewController{
     private func configureCollectionView() {
         collectionView.backgroundColor = .systemBackground
         collectionView.register(PhotoCell.self, forCellWithReuseIdentifier: cellId)
+        collectionView.register(LoadingCell.self, forCellWithReuseIdentifier: "loadingId")
+        
     }
     
     private func handlePhotoData(photos: [Photo], error: ErrorMessage?) {
@@ -136,16 +139,39 @@ class HomeVC: UICollectionViewController{
     
     // Collection View Functions
     
-    override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return photoViewModels.count
+    override func numberOfSections(in collectionView: UICollectionView) -> Int {
+        if weHitBottom {
+            weHitBottom = false
+            return 2
+        }
+        return 1
     }
     
-    override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! PhotoCell
-        if indexPath.row < photoViewModels.count {
-            cell.photoViewModel = photoViewModels[indexPath.row]
+    override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        if section == 0 {
+            return photoViewModels.count
+        } else if section == 1 && continuePagination {
+            return 1
         }
-        return cell
+        return 0
+    }
+    
+    
+    
+    override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        
+        if indexPath.section == 0 {
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! PhotoCell
+            if indexPath.row < photoViewModels.count {
+                cell.photoViewModel = photoViewModels[indexPath.row]
+            }
+            return cell
+        } else {
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "loadingId", for: indexPath) as! LoadingCell
+            cell.activityIndicator.startAnimating()
+            return cell
+        }
+        
     }
     
     override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
@@ -162,7 +188,9 @@ class HomeVC: UICollectionViewController{
         let height = scrollView.frame.size.height
 
         if offsetY > contentHeight - height {
+            weHitBottom = true
             guard continuePagination else { return }
+            collectionView.reloadData()
             page += 1
             getPhotos(page: page)
         }
@@ -180,6 +208,9 @@ extension HomeVC: UICollectionViewDelegateFlowLayout {
     }
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        if indexPath.section == 1 {
+            return CGSize(width: view.frame.width, height: 60)
+        }
         let side = (view.frame.width - 2) / 3
         return CGSize(width: side, height: side)
     }
