@@ -11,6 +11,7 @@ import UIKit
 class HomeVC: UICollectionViewController{
 
     let cellId = "cellId"
+    let loadingId = "loadingId"
     let paginationLoaderId = "paginationLoaderId"
     let label = HelperLabel()
     var activityIndicator2 = UIActivityIndicatorView()
@@ -29,13 +30,12 @@ class HomeVC: UICollectionViewController{
         super.loadView()
         configureRefreshButton()
         setupActivityIndicator()
+        configureCollectionView()
     }
     
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        configureCollectionView()
-        loadingImages(true)
-        getPhotos(page: page)
+    private func configureRefreshButton() {
+        refreshButton = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refreshTapped))
+        self.navigationItem.rightBarButtonItem = refreshButton
     }
     
     private func setupActivityIndicator() {
@@ -52,20 +52,20 @@ class HomeVC: UICollectionViewController{
         activityIndicator.centerYAnchor.constraint(equalTo: activityIndicatorContainer.centerYAnchor).isActive = true
     }
     
-    private func getPhotos(page: Int) {
-        FlickrClient.getPhotoData(page: page, completion: handlePhotoData)
-    }
-    
-    private func configureRefreshButton() {
-        refreshButton = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refreshTapped))
-        self.navigationItem.rightBarButtonItem = refreshButton
-    }
-    
     private func configureCollectionView() {
         collectionView.backgroundColor = .systemBackground
         collectionView.register(PhotoCell.self, forCellWithReuseIdentifier: cellId)
-        collectionView.register(LoadingCell.self, forCellWithReuseIdentifier: "loadingId")
-        
+        collectionView.register(LoadingCell.self, forCellWithReuseIdentifier: loadingId)
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        getPhotos(page: page)
+    }
+    
+    private func getPhotos(page: Int) {
+        loadingImages(true)
+        FlickrClient.getPhotoData(page: page, completion: handlePhotoData)
     }
     
     private func handlePhotoData(photos: [Photo], error: ErrorMessage?) {
@@ -98,7 +98,6 @@ class HomeVC: UICollectionViewController{
     }
 
     @objc func refreshTapped() {
-        loadingImages(true)
         photoViewModels = []
         photos = []
         setupActivityIndicator()
@@ -137,8 +136,27 @@ class HomeVC: UICollectionViewController{
         }
     }
     
-    // Collection View Functions
+    // Pagination
     
+    override func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        let offsetY = scrollView.contentOffset.y
+        let contentHeight = scrollView.contentSize.height
+        let height = scrollView.frame.size.height
+
+        if offsetY > contentHeight - height {
+            guard continuePagination else { return }
+            weHitBottom = true
+            collectionView.reloadData()
+            page += 1
+            getPhotos(page: page)
+        }
+    }
+    
+}
+
+    // MARK: - CollectionView Delegate Functions
+
+extension HomeVC {
     override func numberOfSections(in collectionView: UICollectionView) -> Int {
         if weHitBottom {
             weHitBottom = false
@@ -156,10 +174,7 @@ class HomeVC: UICollectionViewController{
         return 0
     }
     
-    
-    
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        
         if indexPath.section == 0 {
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! PhotoCell
             if indexPath.row < photoViewModels.count {
@@ -167,11 +182,10 @@ class HomeVC: UICollectionViewController{
             }
             return cell
         } else {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "loadingId", for: indexPath) as! LoadingCell
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: loadingId, for: indexPath) as! LoadingCell
             cell.activityIndicator.startAnimating()
             return cell
         }
-        
     }
     
     override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
@@ -179,24 +193,9 @@ class HomeVC: UICollectionViewController{
         detailVC.photoViewModel = photoViewModels[indexPath.row]
         present(detailVC, animated: true)
     }
-    
-    // Pagination
-    
-    override func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-        let offsetY = scrollView.contentOffset.y
-        let contentHeight = scrollView.contentSize.height
-        let height = scrollView.frame.size.height
-
-        if offsetY > contentHeight - height {
-            weHitBottom = true
-            guard continuePagination else { return }
-            collectionView.reloadData()
-            page += 1
-            getPhotos(page: page)
-        }
-    }
-    
 }
+
+    //MARK: - CollectionView FlowLayout
 
 extension HomeVC: UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
