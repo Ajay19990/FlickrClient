@@ -14,7 +14,7 @@ class FlickrClient {
     
     class func getPhotoData(page: Int, completion: @escaping ([Photo], ErrorMessage?) -> Void) {
         
-        let urlString = "https://api.flickr.com/services/rest/?method=flickr.photos.getRecent&per_page=40&page=\(page)&api_key=6f102c62f41998d151e5a1b48713cf13&format=json&nojsoncallback=1&extras=url_s"
+        let urlString = "https://api.flickr.com/services/rest/?method=flickr.photos.getRecent&per_page=20&page=\(page)&api_key=6f102c62f41998d151e5a1b48713cf13&format=json&nojsoncallback=1&extras=url_s"
         
         guard let url = URL(string: urlString) else { return }
         AF.request(url).responseData { (response) in

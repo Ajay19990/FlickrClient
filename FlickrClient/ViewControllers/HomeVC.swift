@@ -11,20 +11,18 @@ import UIKit
 class HomeVC: UICollectionViewController{
 
     let cellId = "cellId"
-    let loadingId = "loadingId"
-    let paginationLoaderId = "paginationLoaderId"
+    let headerId = "headerId"
     let label = HelperLabel()
     var activityIndicator2 = UIActivityIndicatorView()
-    var photoViewModels = [PhotoViewModel]()
-    var photos = [Photo]()
     var refreshButton: UIBarButtonItem!
+    var activityIndicatorContainer: UIView!
+    var activityIndicator: UIActivityIndicatorView!
+    
+    var photoViewModels = [PhotoViewModel]()
+    var parentArray = [[PhotoViewModel]]()
     
     var page = 1
     var continuePagination = true
-    var weHitBottom = false
-    
-    var activityIndicatorContainer: UIView!
-    var activityIndicator: UIActivityIndicatorView!
     
     override func loadView() {
         super.loadView()
@@ -55,7 +53,10 @@ class HomeVC: UICollectionViewController{
     private func configureCollectionView() {
         collectionView.backgroundColor = .systemBackground
         collectionView.register(PhotoCell.self, forCellWithReuseIdentifier: cellId)
-        collectionView.register(LoadingCell.self, forCellWithReuseIdentifier: loadingId)
+        collectionView.register(SectionHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: headerId)
+        if let layout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout {
+            layout.sectionHeadersPinToVisibleBounds = true
+        }
     }
     
     override func viewDidLoad() {
@@ -78,8 +79,8 @@ class HomeVC: UICollectionViewController{
         }
         
         if page == 3 { self.continuePagination = false }
-        self.photos.append(contentsOf: photos)
-        self.photoViewModels = self.photos.map({return PhotoViewModel(photo: $0)})
+        self.photoViewModels = photos.map({return PhotoViewModel(photo: $0)})
+        parentArray.append(self.photoViewModels)
         label.removeFromSuperview()
         
         DispatchQueue.main.async {
@@ -99,13 +100,12 @@ class HomeVC: UICollectionViewController{
 
     @objc func refreshTapped() {
         photoViewModels = []
-        photos = []
+        parentArray = []
         setupActivityIndicator()
         showActivityIndicator(show: true)
-        getPhotos(page: 1)
         page = 1
+        getPhotos(page: page)
         continuePagination = true
-        collectionView.scrollToItem(at: IndexPath(row: 0, section: 0), at: .top, animated: true)
     }
     
     private func loadingImages(_ loadingImages: Bool) {
@@ -123,21 +123,16 @@ class HomeVC: UICollectionViewController{
     }
     
     private func showActivityIndicator(show: Bool) {
-      if show {
-        DispatchQueue.main.async{
+        if show {
             self.activityIndicator.startAnimating()
             self.refreshButton.isEnabled = false
-        }
-      } else {
-            DispatchQueue.main.async{
-                self.activityIndicator.stopAnimating()
-                self.activityIndicatorContainer.removeFromSuperview()
-            }
+        } else {
+            self.activityIndicator.stopAnimating()
+            self.activityIndicatorContainer.removeFromSuperview()
         }
     }
     
     // Pagination
-    
     override func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         let offsetY = scrollView.contentOffset.y
         let contentHeight = scrollView.contentSize.height
@@ -145,9 +140,9 @@ class HomeVC: UICollectionViewController{
 
         if offsetY > contentHeight - height {
             guard continuePagination else { return }
-            weHitBottom = true
-            collectionView.reloadData()
             page += 1
+            setupActivityIndicator()
+            showActivityIndicator(show: true)
             getPhotos(page: page)
         }
     }
@@ -158,40 +153,36 @@ class HomeVC: UICollectionViewController{
 
 extension HomeVC {
     override func numberOfSections(in collectionView: UICollectionView) -> Int {
-        if weHitBottom {
-            weHitBottom = false
-            return 2
-        }
-        return 1
+        return parentArray.count
     }
     
     override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        if section == 0 {
-            return photoViewModels.count
-        } else if section == 1 && continuePagination {
-            return 1
-        }
-        return 0
+        return parentArray[section].count
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        if indexPath.section == 0 {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! PhotoCell
-            if indexPath.row < photoViewModels.count {
-                cell.photoViewModel = photoViewModels[indexPath.row]
-            }
-            return cell
-        } else {
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: loadingId, for: indexPath) as! LoadingCell
-            cell.activityIndicator.startAnimating()
-            return cell
+        let photoViewModels = parentArray[indexPath.section]
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! PhotoCell
+        if indexPath.row < photoViewModels.count {
+            cell.photoViewModel = photoViewModels[indexPath.row]
         }
+        return cell
     }
     
     override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let detailVC = DetailVC()
         detailVC.photoViewModel = photoViewModels[indexPath.row]
         present(detailVC, animated: true)
+    }
+    
+    override func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
+        let sectionHeaderView = collectionView.dequeueReusableSupplementaryView(ofKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: headerId, for: indexPath) as! SectionHeaderView
+        sectionHeaderView.page = indexPath.section + 1
+        return sectionHeaderView
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, referenceSizeForHeaderInSection section: Int) -> CGSize {
+        return CGSize(width: view.frame.width, height: 50)
     }
 }
 
@@ -207,9 +198,6 @@ extension HomeVC: UICollectionViewDelegateFlowLayout {
     }
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        if indexPath.section == 1 {
-            return CGSize(width: view.frame.width, height: 60)
-        }
         let side = (view.frame.width - 2) / 3
         return CGSize(width: side, height: side)
     }
