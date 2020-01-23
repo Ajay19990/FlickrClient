@@ -8,4 +8,5 @@ target 'FlickrClient' do
   # Pods for FlickrClient
 pod 'Alamofire', '~> 5.0.0-rc.3'
 pod 'SDWebImage', '~> 5.0'
+pod 'AFNetworking', '~> 3.0’
 end

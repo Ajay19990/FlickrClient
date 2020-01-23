@@ -17,11 +17,7 @@ class PhotoCell: UICollectionViewCell {
         
         didSet {
             guard let photoViewModel = photoViewModel else { return }
-            guard let url = photoViewModel.url else {
-                imageView.image = UIImage(named:  placeholderImageName)
-                return
-            }
-            imageView.sd_setImage(with: url, placeholderImage: UIImage(named: placeholderImageName), options: [], context: nil)
+            imageView.sd_setImage(with: photoViewModel.url, placeholderImage: UIImage(named: placeholderImageName), options: [], context: nil)
         }
         
     }

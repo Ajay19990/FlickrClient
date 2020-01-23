@@ -7,12 +7,14 @@
 //
 
 import UIKit
+import CoreData
 
 class HomeVC: UICollectionViewController{
+    
+    let appDelegate = UIApplication.shared.delegate as! AppDelegate
 
     let cellId = "cellId"
     let headerId = "headerId"
-    let label = HelperLabel()
     var activityIndicator2 = UIActivityIndicatorView()
     var refreshButton: UIBarButtonItem!
     var activityIndicatorContainer: UIView!
@@ -20,8 +22,9 @@ class HomeVC: UICollectionViewController{
     
     var photoViewModels = [PhotoViewModel]()
     var parentArray = [[PhotoViewModel]]()
+    var pages = [Page]()
     
-    var page = 1
+    var pageNumber = 1
     var continuePagination = true
     
     override func loadView() {
@@ -61,10 +64,46 @@ class HomeVC: UICollectionViewController{
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        getPhotos(page: page)
+        setupFetchRequest()
+        addObserver()
+        downloadPhotos(page: pageNumber)
     }
     
-    private func getPhotos(page: Int) {
+    private func setupFetchRequest() {
+        let fetchRequest: NSFetchRequest<Page> = Page.fetchRequest()
+        fetchRequest.sortDescriptors = []
+        if let result = try? appDelegate.persistentContainer.viewContext.fetch(fetchRequest) {
+            self.pages = result
+            print("pages: ", pages.count)
+            for page in pages {
+                
+                let fetchRequest: NSFetchRequest<PhotoEntity> = PhotoEntity.fetchRequest()
+                let predicate = NSPredicate(format: "page == %@", page)
+                fetchRequest.sortDescriptors = []
+                fetchRequest.predicate = predicate
+                if let result = try? appDelegate.persistentContainer.viewContext.fetch(fetchRequest) {
+                    print("images: ", result.count)
+                }
+            }
+        }
+    }
+    
+    private func addObserver() {
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("NetworkReachabilityChanged"), object: nil, queue: nil, using: {
+            (notification) in
+            if let userInfo = notification.userInfo {
+                if let messageTitle = userInfo["summary"] as? String, let reachableOrNot = userInfo["reachableOrNot"] as? String, let reachableStatus = userInfo["reachabilityStatus"] as? String {
+                    let messageFullBody = "\(reachableOrNot)\n\(reachableStatus)"
+                    let alertController = UIAlertController(title: messageTitle, message: messageFullBody, preferredStyle: .alert)
+                    let OKAction = UIAlertAction(title: "OK", style: .default)
+                    alertController.addAction(OKAction)
+                    self.present(alertController, animated: true, completion: nil)
+                }
+            }
+        })
+    }
+    
+    private func downloadPhotos(page: Int) {
         loadingImages(true)
         FlickrClient.getPhotoData(page: page, completion: handlePhotoData)
     }
@@ -74,28 +113,30 @@ class HomeVC: UICollectionViewController{
             DispatchQueue.main.async {
                 self.loadingImages(false)
                 self.presentAlert(title: error!.rawValue, message: "")
-                self.setupLabel()
             }
         }
         
-        if page == 3 { self.continuePagination = false }
+        if pageNumber == 3 { self.continuePagination = false }
         self.photoViewModels = photos.map({return PhotoViewModel(photo: $0)})
         parentArray.append(self.photoViewModels)
-        label.removeFromSuperview()
+        
+        if pageNumber == 1 {
+            for page in pages {
+                appDelegate.persistentContainer.viewContext.delete(page)
+                try? appDelegate.persistentContainer.viewContext.save()
+            }
+            pages = []
+        }
+        
+        let page = Page(context: appDelegate.persistentContainer.viewContext)
+        page.pageNumber = Int64(pageNumber)
+        try? appDelegate.persistentContainer.viewContext.save()
+        pages.append(page)
         
         DispatchQueue.main.async {
             self.collectionView.reloadData()
             self.loadingImages(false)
         }
-    }
-    
-    private func setupLabel() {
-        view.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            label.heightAnchor.constraint(equalToConstant: 40)
-        ])
     }
 
     @objc func refreshTapped() {
@@ -103,8 +144,8 @@ class HomeVC: UICollectionViewController{
         parentArray = []
         setupActivityIndicator()
         showActivityIndicator(show: true)
-        page = 1
-        getPhotos(page: page)
+        pageNumber = 1
+        downloadPhotos(page: pageNumber)
         continuePagination = true
     }
     
@@ -140,10 +181,10 @@ class HomeVC: UICollectionViewController{
 
         if offsetY > contentHeight - height {
             guard continuePagination else { return }
-            page += 1
+            pageNumber += 1
             setupActivityIndicator()
             showActivityIndicator(show: true)
-            getPhotos(page: page)
+            downloadPhotos(page: pageNumber)
         }
     }
     
@@ -161,16 +202,35 @@ extension HomeVC {
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let photoViewModels = parentArray[indexPath.section]
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! PhotoCell
-        if indexPath.row < photoViewModels.count {
-            cell.photoViewModel = photoViewModels[indexPath.row]
+        cell.imageView.image = UIImage(named: "placeholder")
+        
+        if indexPath.section < parentArray.count {
+            let photoViewModels = parentArray[indexPath.section]
+            
+            if indexPath.row < photoViewModels.count {
+                let photoViewModel = photoViewModels[indexPath.row]
+                FlickrClient.getImage(urlString: photoViewModel.url?.absoluteString ?? "") { (image, isImageFromCache) in
+                    if isImageFromCache == false {
+                        let page = self.pages[indexPath.section]
+                        let photoEntity = PhotoEntity(context: self.appDelegate.persistentContainer.viewContext)
+                        photoEntity.image = image?.pngData()
+                        photoEntity.urlString = photoViewModel.url?.absoluteString
+                        photoEntity.page = page
+                        try? self.appDelegate.persistentContainer.viewContext.save()
+                    }
+                    DispatchQueue.main.async {
+                        cell.imageView.image = image
+                    }
+                }
+            }
         }
         return cell
     }
     
     override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let detailVC = DetailVC()
+        let photoViewModels = parentArray[indexPath.section]
         detailVC.photoViewModel = photoViewModels[indexPath.row]
         present(detailVC, animated: true)
     }
