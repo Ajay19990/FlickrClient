@@ -49,7 +49,9 @@ class DetailVC: UIViewController {
         imageView.contentMode = .scaleAspectFill
         imageView.clipsToBounds = true
         
-        imageView.sd_setImage(with: photoViewModel.url, placeholderImage: UIImage(named: "placeholder"), options: [], context: nil)
+        FlickrClient.getImage(urlString: photoViewModel.url?.absoluteString ?? "") { (image, isImageFromCache) in
+            self.imageView.image = image
+        }
     }
     
 }
