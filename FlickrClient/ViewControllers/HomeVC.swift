@@ -9,13 +9,12 @@
 import UIKit
 import CoreData
 
-class HomeVC: UICollectionViewController{
+class HomeVC: UICollectionViewController {
     
     let appDelegate = UIApplication.shared.delegate as! AppDelegate
 
     let cellId = "cellId"
     let headerId = "headerId"
-    var activityIndicator2 = UIActivityIndicatorView()
     var refreshButton: UIBarButtonItem!
     var activityIndicatorContainer: UIView!
     var activityIndicator: UIActivityIndicatorView!
@@ -33,7 +32,7 @@ class HomeVC: UICollectionViewController{
     override func loadView() {
         super.loadView()
         configureRefreshButton()
-        setupActivityIndicator()
+        configureActivityIndicator()
         configureCollectionView()
     }
     
@@ -42,7 +41,7 @@ class HomeVC: UICollectionViewController{
         self.navigationItem.rightBarButtonItem = refreshButton
     }
     
-    private func setupActivityIndicator() {
+    private func configureActivityIndicator() {
         activityIndicatorContainer = ActivityIndicatorContainer(view: view)
         
         activityIndicator = UIActivityIndicatorView()
@@ -171,7 +170,7 @@ class HomeVC: UICollectionViewController{
     private func refresh() {
         photoViewModels = []
         parentArray = []
-        setupActivityIndicator()
+        configureActivityIndicator()
         showActivityIndicator(show: true)
         pageNumber = 1
         downloadPhotos(page: self.pageNumber)
@@ -187,7 +186,7 @@ class HomeVC: UICollectionViewController{
         if offsetY > contentHeight - height {
             guard continuePagination else { return }
             pageNumber += 1
-            setupActivityIndicator()
+            configureActivityIndicator()
             showActivityIndicator(show: true)
             downloadPhotos(page: pageNumber)
         }

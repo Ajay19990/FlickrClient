@@ -11,16 +11,6 @@ import UIKit
 class PhotoCell: UICollectionViewCell {
     
     let imageView = UIImageView()
-    let placeholderImageName = "placeholder"
-    
-    var photoViewModel: PhotoViewModel? {
-        
-        didSet {
-            guard let photoViewModel = photoViewModel else { return }
-            imageView.sd_setImage(with: photoViewModel.url, placeholderImage: UIImage(named: placeholderImageName), options: [], context: nil)
-        }
-        
-    }
     
     override init(frame: CGRect) {
         super.init(frame: frame)
