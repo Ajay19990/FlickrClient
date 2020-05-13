@@ -3,7 +3,7 @@
 The app fetches random images from flickr API and display them in a UICollectionView with pagination and also stores them offline with the help of Core Data.  
 
 ## Screenshots
-<img src = "Screenshots/Home.png" width = "180">  &nbsp; &nbsp; <img src = "Screenshots/Pagination.png" width = "180"> &nbsp; &nbsp; <img src = "Screenshots/Details.png" width = "180">
+<img src = "Screenshots/Home.png" width = "180">  &nbsp; &nbsp; <img src = "Screenshots/Pagination.png" width = "180"> &nbsp; &nbsp; <img src = "Screenshots/Detail.png" width = "180">
 
 ## Requirements
 1. Xcode 11
