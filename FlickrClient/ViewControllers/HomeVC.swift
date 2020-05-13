@@ -160,7 +160,6 @@ class HomeVC: UICollectionViewController {
     private func showActivityIndicator(show: Bool) {
         if show {
             self.activityIndicator.startAnimating()
-            self.refreshButton.isEnabled = false
         } else {
             self.activityIndicator.stopAnimating()
             self.activityIndicatorContainer.removeFromSuperview()

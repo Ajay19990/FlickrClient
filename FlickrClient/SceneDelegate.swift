@@ -19,7 +19,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(frame: windowScene.coordinateSpace.bounds)
         window?.windowScene = windowScene
         
-        window?.rootViewController = createTabBarController()
+        window?.rootViewController = createHomeNC()
         window?.makeKeyAndVisible()
     }
     
@@ -29,19 +29,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         homeVC.tabBarItem.title = "Home"
         homeVC.tabBarItem.image = UIImage(named: "home")
         return UINavigationController(rootViewController: homeVC)
-    }
-    
-    private func createSearchNC() -> UINavigationController {
-        let searchVC = SearchVC()
-        searchVC.title = "Search"
-        searchVC.tabBarItem = UITabBarItem(tabBarSystemItem: .search, tag: 1)
-        return UINavigationController(rootViewController: searchVC)
-    }
-    
-    private func createTabBarController() -> UITabBarController {
-        let tabBarController = UITabBarController()
-        tabBarController.viewControllers = [createHomeNC(), createSearchNC()]
-        return tabBarController
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
